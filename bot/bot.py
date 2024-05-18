@@ -56,13 +56,8 @@ def release(update: Update, context: CallbackContext):
     update.message.reply_text(output)
 
 def uname(update: Update, context: CallbackContext):
-    output = execute_command(host, port, username, password, "uname")
-    update.message.reply_text(output)
-    output = execute_command(host, port, username, password, "arch")
-    update.message.reply_text(output)
-    output = execute_command(host, port, username, password, "uname -r")
-    update.message.reply_text(output)
-
+    output = execute_command(host, port, username, password, "uname -a")
+    
 def uptime(update: Update, context: CallbackContext):
     output = execute_command(host, port, username, password, "uptime")
     update.message.reply_text(output)
@@ -76,7 +71,7 @@ def free(update: Update, context: CallbackContext):
     update.message.reply_text(output)
 
 def mpstat(update: Update, context: CallbackContext):
-    output = execute_command(host, port, username, password, "mpstat")
+    output = execute_command(host, port, username, password, "mpstat | head -n 5")
     update.message.reply_text(output)
 
 def get_w(update: Update, context: CallbackContext):
@@ -92,11 +87,11 @@ def get_critical(update: Update, context: CallbackContext):
     update.message.reply_text(output)
 
 def get_ps(update: Update, context: CallbackContext):
-    output = execute_command(host, port, username, password, "ps -h")
+    output = execute_command(host, port, username, password, "ps aux | head -n 5")
     update.message.reply_text(output)
 
 def get_ss(update: Update, context: CallbackContext):
-    output = execute_command(host, port, username, password, "ss | tail -n 10")
+    output = execute_command(host, port, username, password, "ss -tulwn")
     update.message.reply_text(output)
 
 def get_apt_listcommand(update: Update, context: CallbackContext):
@@ -120,7 +115,7 @@ def search_package(update: Update, context: CallbackContext):
     update.message.reply_text(output)
 
 def get_services(update: Update, context: CallbackContext):
-    output = execute_command(host, port, username, password, "systemctl --all | tail -n 10")
+    output = execute_command(host, port, username, password, "systemctl list-units --type=service | head -n 5")
     update.message.reply_text(output)
 
 def get_logs(update: Update, context: CallbackContext):
