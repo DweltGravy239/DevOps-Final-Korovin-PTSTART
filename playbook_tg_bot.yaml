@@ -29,12 +29,12 @@
 
     - name: copy requirements.txt
       copy:
-        src: /home/{{ hostvars[inventory_hostname]['HOST_USER'] }}/DevOps-Final-Korovin-PTSTART/requirements.txt
-        dest: "{{ hostvars[inventory_hostname]['WORKDIR'] }}/requirements.txt"
+        src: /home/{{ hostvars[inventory_hostname]['RM_USER'] }}/DevOps-Final-Korovin-PTSTART/requirements.txt
+        dest: "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/requirements.txt"
 
     - name: installing pip packages
       pip:
-        requirements: "{{ hostvars[inventory_hostname]['HOST_USER'] }}/requirements.txt"
+        requirements: "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/requirements.txt"
 
     - name: install paramiko
       pip:
