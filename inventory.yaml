@@ -28,5 +28,5 @@ all:
     RM_PORT: 22
     RM_USER: ansible
     RM_PASSWORD: ansible
-    WORKDIR1: /home/kali/bot
+    WORKDIR1: /home/ansible/bot
     RM_HOST1: 192.168.88.167
