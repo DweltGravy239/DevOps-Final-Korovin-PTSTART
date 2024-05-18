@@ -2,7 +2,17 @@
   hosts: host1
   become: true
   tasks:
-    - name: install pkgs 
+    - name: Ensure PostgreSQL is installed
+      apt:
+        name: postgresql
+        state: present
+
+    - name: Ensure PostgreSQL is running
+      service:
+        name: postgresql
+        state: started
+
+    - name: install pkgs
       apt:
         pkg:
         - git
@@ -32,13 +42,8 @@
     - name: make logs dir
       command: mkdir -p "{{ hostvars[inventory_hostname]['WORKDIR'] }}/../bot"
 
-    - name: create database
-      become_user: postgres
-      postgresql_db:
-        name: "{{ hostvars[inventory_hostname]['DB_DATABASE'] }}"
-        state: present
-
     - name: postgresql.conf master configuration
+      become_user: postgres
       blockinfile:
         path: "/etc/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/postgresql.conf"
         block: |
@@ -51,22 +56,53 @@
           max_replication_slots=10
           hot_standby_feedback=on
           log_replication_commands=on
+      register: postgresql_conf_changed
 
     - name: pg_hba master configuration
-      become: true
+      become_user: postgres
       blockinfile:
         path: "/etc/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/pg_hba.conf"
         block: |
-          local all postgres peer
+          local all postgres md5
           host replication all {{ hostvars['host2']['ansible_host'] }}/32 scram-sha-256
           host all all 0.0.0.0/0 md5
-        
+      register: pg_hba_conf_changed
 
     - name: apply changes
       service:
         name: postgresql
         state: restarted
-      become: true
+      when: postgresql_conf_changed is changed or pg_hba_conf_changed is changed
+
+    - name: Check if PostgreSQL is running
+      become_user: postgres
+      shell: "pg_isready -q"
+      register: postgresql_running
+      changed_when: false
+      failed_when: false
+
+    - name: create database if not exists
+      become_user: postgres
+      postgresql_db:
+        name: "{{ hostvars[inventory_hostname]['DB_DATABASE'] }}"
+        state: present
+      when: postgresql_running is success
+
+    - name: Create replication user if not exists
+      become_user: postgres
+      postgresql_user:
+        name: "{{ hostvars[inventory_hostname]['DB_REPL_USER'] }}"
+        password: "{{ hostvars[inventory_hostname]['DB_REPL_PASSWORD'] }}"
+        role_attr_flags: "LOGIN"
+        state: present
+      when: postgresql_running is success
+
+    - name: Ensure replication role
+      become_user: postgres
+      postgresql_user:
+        name: "{{ hostvars[inventory_hostname]['DB_REPL_USER'] }}"
+        role_attr_flags: "REPLICATION"
+      when: postgresql_running is success
 
     - name: copying init.sql
       copy:
@@ -111,7 +147,14 @@
 
     - name: run init.sql as postgres
       shell: "sudo -u postgres /usr/bin/psql -a -f /tmp/init.sql"
-      become: false
+      args:
+        warn: false
+      ignore_errors: true
+
+    - name: Ensure log file is readable
+      file:
+        path: /var/log/postgresql/postgresql-{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}-main.log
+        mode: '0644'
 
 
 - name: install host2
@@ -119,19 +162,19 @@
   become: true
   tasks:
     - name: postgresql.conf replica conf
+      become_user: postgres
       blockinfile:
         path: "/etc/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/postgresql.conf"
         block: |
           listen_addresses = '*'
           port = {{ hostvars[inventory_hostname]['DB_REPL_PORT'] }}
-      become: true
 
     - name: apply replica changes
       service:
         name: postgresql
         state: restarted
 
-    - name: install pkgs 
+    - name: install pkgs
       apt:
         pkg:
         - git
@@ -142,7 +185,6 @@
     - name: install paramiko
       pip:
         name: paramiko
-   
 
     - name: stop PostgreSQL
       service:
@@ -153,11 +195,9 @@
       command: rm -rf /var/lib/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/*
       become: true
 
-
     - name: ensure directory is clean
       command: find /var/lib/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/ -mindepth 1 -delete
       become: true
-
 
     - name: performing replication
       shell: pg_basebackup -h {{ hostvars[inventory_hostname]['DB_HOST'] }} -D /var/lib/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/ -p {{ hostvars[inventory_hostname]['DB_PORT'] }} -U {{ hostvars[inventory_hostname]['DB_REPL_USER'] }} -Fp -Xs -P -R
@@ -176,18 +216,17 @@
 
     - name: rights
       command: chown -R postgres:postgres /var/lib/postgresql/
-      become: true      
+      become: true
 
     - name: start PostgreSQL
       service:
         name: postgresql
         state: started
 
-
-
-
-
-
+    - name: Ensure log file is readable
+      file:
+        path: /var/log/postgresql/postgresql-{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}-main.log
+        mode: '0644'
 
 
 - name: CONFIGURATING BOT
