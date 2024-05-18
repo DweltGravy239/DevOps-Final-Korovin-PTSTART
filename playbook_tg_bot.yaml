@@ -1,0 +1,210 @@
+- name: install host1
+  hosts: host1
+  become: true
+  tasks:
+    - name: install pkgs 
+      apt:
+        pkg:
+        - git
+        - python3-pip
+        - postgresql-contrib
+        - postgresql-common
+
+    - name: get a git repository
+      git:
+        repo: "{{ hostvars[inventory_hostname]['GIT'] }}"
+        dest: "{{ hostvars[inventory_hostname]['WORKDIR'] }}"
+        version: main
+
+    - name: copy requirements.txt
+      copy:
+        src: /home/kali/ansible/requirements.txt
+        dest: "{{ hostvars[inventory_hostname]['WORKDIR'] }}/requirements.txt"
+
+    - name: installing pip packages
+      pip:
+        requirements: "{{ hostvars[inventory_hostname]['WORKDIR'] }}/requirements.txt"
+
+    - name: install paramiko
+      pip:
+        name: paramiko
+
+    - name: make logs dir
+      command: mkdir -p "{{ hostvars[inventory_hostname]['WORKDIR'] }}/../bot"
+
+    - name: create database
+      become_user: postgres
+      postgresql_db:
+        name: "{{ hostvars[inventory_hostname]['DB_DATABASE'] }}"
+        state: present
+
+    - name: postgresql.conf master configuration
+      blockinfile:
+        path: "/etc/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/postgresql.conf"
+        block: |
+          listen_addresses = '*'
+          port = {{ hostvars[inventory_hostname]['DB_PORT'] }}
+          max_wal_senders=10
+          wal_level=replica
+          wal_log_hints = on
+          hot_standby=on
+          max_replication_slots=10
+          hot_standby_feedback=on
+          log_replication_commands=on
+
+    - name: pg_hba master configuration
+      become: true
+      blockinfile:
+        path: "/etc/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/pg_hba.conf"
+        block: |
+          local all postgres peer
+          host replication all {{ hostvars['host2']['ansible_host'] }}/32 scram-sha-256
+          host all all 0.0.0.0/0 md5
+        
+
+    - name: apply changes
+      service:
+        name: postgresql
+        state: restarted
+      become: true
+
+    - name: copying init.sql
+      copy:
+        src: /home/kali/ansible/init.sql
+        dest: /tmp/init.sql
+
+    - name: change rights
+      file:
+        path: /tmp/init.sql
+        owner: postgres
+        group: postgres
+        mode: '0644'
+
+    - name: set permissions on temporary directory
+      file:
+        path: /tmp
+        mode: '1777'
+
+    - name: db init
+      replace:
+        path: /tmp/init.sql
+        regexp: "DB_DATABASE"
+        replace: "{{ hostvars[inventory_hostname]['DB_DATABASE'] }}"
+
+    - name: user init
+      replace:
+        path: /tmp/init.sql
+        regexp: "DB_USER"
+        replace: "{{ hostvars[inventory_hostname]['DB_USER'] }}"
+
+    - name: repl user init
+      replace:
+        path: /tmp/init.sql
+        regexp: "DB_REPL_USER"
+        replace: "{{ hostvars[inventory_hostname]['DB_REPL_USER'] }}"
+
+    - name: repl pass init
+      replace:
+        path: /tmp/init.sql
+        regexp: "DB_REPL_PASSWORD"
+        replace: "{{ hostvars[inventory_hostname]['DB_REPL_PASSWORD'] }}"
+
+    - name: run init.sql as postgres
+      shell: "sudo -u postgres /usr/bin/psql -a -f /tmp/init.sql"
+      become: false
+
+
+- name: install host2
+  hosts: host2
+  become: true
+  tasks:
+    - name: postgresql.conf replica conf
+      blockinfile:
+        path: "/etc/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/postgresql.conf"
+        block: |
+          listen_addresses = '*'
+          port = {{ hostvars[inventory_hostname]['DB_REPL_PORT'] }}
+      become: true
+
+    - name: apply replica changes
+      service:
+        name: postgresql
+        state: restarted
+
+    - name: install pkgs 
+      apt:
+        pkg:
+        - git
+        - python3-pip
+        - postgresql-contrib
+        - postgresql-common
+
+    - name: install paramiko
+      pip:
+        name: paramiko
+   
+
+    - name: stop PostgreSQL
+      service:
+        name: postgresql
+        state: stopped
+
+    - name: delete dbs
+      command: rm -rf /var/lib/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/*
+      become: true
+
+
+    - name: ensure directory is clean
+      command: find /var/lib/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/ -mindepth 1 -delete
+      become: true
+
+
+    - name: performing replication
+      shell: pg_basebackup -h {{ hostvars[inventory_hostname]['DB_HOST'] }} -D /var/lib/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/ -p {{ hostvars[inventory_hostname]['DB_PORT'] }} -U {{ hostvars[inventory_hostname]['DB_REPL_USER'] }} -Fp -Xs -P -R
+      environment:
+        PGUSER: "{{ hostvars[inventory_hostname]['DB_REPL_USER'] }}"
+        PGPASSWORD: "{{ hostvars[inventory_hostname]['DB_REPL_PASSWORD'] }}"
+      become: true
+
+    - name: set permissions for the replication directory
+      file:
+        path: /var/lib/postgresql/{{ hostvars[inventory_hostname]['POSTGRES_VERSION'] }}/main/
+        owner: postgres
+        group: postgres
+        recurse: yes
+      become: true
+
+    - name: rights
+      command: chown -R postgres:postgres /var/lib/postgresql/
+      become: true      
+
+    - name: start PostgreSQL
+      service:
+        name: postgresql
+        state: started
+
+
+
+
+
+
+
+
+- name: CONFIGURATING BOT
+  hosts: host1
+  become: yes
+  tasks:
+    - name: start bot
+      command: python3 "{{ hostvars[inventory_hostname]['WORKDIR'] }}/bot.py"
+      environment:
+        TOKEN: "{{ hostvars[inventory_hostname]['TOKEN'] }}"
+        RM_HOST: "{{ hostvars[inventory_hostname]['RM_HOST'] }}"
+        RM_PORT: "{{ hostvars[inventory_hostname]['RM_PORT'] }}"
+        RM_USER: "{{ hostvars[inventory_hostname]['RM_USER'] }}"
+        RM_PASSWORD: "{{ hostvars[inventory_hostname]['RM_PASSWORD'] }}"
+        DB_HOST: "{{ hostvars[inventory_hostname]['DB_HOST'] }}"
+        DB_PORT: "{{ hostvars[inventory_hostname]['DB_PORT'] }}"
+        DB_USER: "{{ hostvars[inventory_hostname]['DB_USER'] }}"
+        DB_PASSWORD: "{{ hostvars[inventory_hostname]['DB_PASSWORD'] }}"
+        DB_DATABASE: "{{ hostvars[inventory_hostname]['DB_DATABASE'] }}"
+        RM_HOST1: "{{ hostvars[inventory_hostname]['RM_HOST1'] }}"
