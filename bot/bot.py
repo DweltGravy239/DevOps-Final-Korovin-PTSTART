@@ -102,17 +102,12 @@ def get_apt_listcommand(update: Update, context: CallbackContext):
 def get_apt_list(update: Update, context: CallbackContext):
     user_input = update.message.text.strip()
     if user_input.lower() == 'all':
-        output = execute_command(host, port, username, password, "apt list | tail -n 10")
+        output = execute_command(host, port, username, password, "apt list --installed | tail -n 10")
     else:
         command = f"apt list --installed | grep {user_input} | tail -n 10"
         output = execute_command(host, port, username, password, command)
     update.message.reply_text(output)
 
-def search_package(update: Update, context: CallbackContext):
-    user_input = update.message.text
-    command = f"apt list {user_input}"
-    output = execute_command(host, port, username, password, command)
-    update.message.reply_text(output)
 
 def get_services(update: Update, context: CallbackContext):
     output = execute_command(host, port, username, password, "systemctl list-units --type=service | head -n 5")
