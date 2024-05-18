@@ -29,7 +29,7 @@
 
     - name: installing pip packages
       pip:
-        requirements: "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/ansible/bot/requirements.txt"
+        requirements: "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/ansible/requirements.txt"
 
     - name: install paramiko
       pip:
