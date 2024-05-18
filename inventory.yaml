@@ -30,4 +30,4 @@ all:
     RM_PASSWORD: ansible
     WORKDIR1: /home/ansible/bot
     RM_HOST1: 192.168.88.167
-    HOST_USER: kali 
+    HOST_USER: kali # Имя пользователя хостовой машинки
