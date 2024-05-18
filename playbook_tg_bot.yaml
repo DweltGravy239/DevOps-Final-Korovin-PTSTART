@@ -2,10 +2,6 @@
   hosts: all
   gather_facts: false
   tasks:
-    - name: Ensure psycopg2 is installed
-      pip:
-        name: psycopg2-binary
-      become: yes
     - name: install pkgs
       apt:
         pkg:
@@ -14,6 +10,11 @@
         - postgresql-contrib
         - postgresql-common
         - sysstat
+      become: yes
+    - name: Ensure psycopg2 is installed
+      pip:
+        name: psycopg2-binary
+      become: yes
     - name: Ensure postgres user exists
       become: yes
       user:
@@ -48,7 +49,7 @@
         - python3-pip
         - postgresql-contrib
         - postgresql-common
-        - sysstat 
+        - sysstat
     - name: get a git repository
       git:
         repo: "{{ hostvars[inventory_hostname]['GIT'] }}"
