@@ -29,7 +29,7 @@
 
     - name: copy requirements.txt
       copy:
-        src: /home/ansible/ansible/requirements.txt
+        src: /home/{{ hostvars[inventory_hostname]['RM_USER'] }}/ansible/requirements.txt
         dest: "{{ hostvars[inventory_hostname]['WORKDIR'] }}/requirements.txt"
 
     - name: installing pip packages
@@ -107,7 +107,7 @@
 
     - name: copying init.sql
       copy:
-        src: /home/ansible/ansible/init.sql
+        src: /home/{{ hostvars[inventory_hostname]['RM_USER'] }}/ansible/init.sql
         dest: /tmp/init.sql
 
     - name: change rights
