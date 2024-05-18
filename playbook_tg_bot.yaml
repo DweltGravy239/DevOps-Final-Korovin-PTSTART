@@ -24,7 +24,7 @@
     - name: get a git repository
       git:
         repo: "{{ hostvars[inventory_hostname]['GIT'] }}"
-        dest: "/home/{{ hostvars[inventory_hostname]['GIT'] }}/ansible"
+        dest: "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/ansible"
         version: main
 
     - name: copy requirements.txt
@@ -34,14 +34,14 @@
 
     - name: installing pip packages
       pip:
-        requirements: "{{ hostvars[inventory_hostname]['WORKDIR'] }}/requirements.txt"
+        requirements: "{{ hostvars[inventory_hostname]['HOST_USER'] }}/requirements.txt"
 
     - name: install paramiko
       pip:
         name: paramiko
 
     - name: make logs dir
-      command: mkdir -p "{{ hostvars[inventory_hostname]['WORKDIR'] }}/../bot"
+      command: mkdir -p "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/../bot"
 
     - name: postgresql.conf master configuration
       become_user: postgres
@@ -107,7 +107,7 @@
 
     - name: copying init.sql
       copy:
-        src: /home/{{ hostvars[inventory_hostname]['RM_USER'] }}/DevOps-Final-Korovin-PTSTART/init.sql
+        src: /home/{{ hostvars[inventory_hostname]['HOST_USER'] }}/DevOps-Final-Korovin-PTSTART/init.sql
         dest: /tmp/init.sql
 
     - name: change rights
