@@ -1,3 +1,32 @@
+- name: Create postgres user
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Ensure psycopg2 is installed
+      pip:
+        name: psycopg2-binary
+      become: yes
+    - name: install pkgs
+      apt:
+        pkg:
+        - git
+        - python3-pip
+        - postgresql-contrib
+        - postgresql-common
+        - sysstat
+    - name: Ensure postgres user exists
+      become: yes
+      user:
+        name: "{{ hostvars[inventory_hostname]['DB_USER'] }}"
+        state: present
+        system: yes
+        password: "{{ hostvars[inventory_hostname]['DB_PASSWORD'] }}"
+    - name: Grant superuser privileges to postgres user
+      become: yes
+      become_user: postgres
+      postgresql_user:
+        name: "{{ hostvars[inventory_hostname]['DB_USER'] }}"
+        role_attr_flags: "SUPERUSER"
 - name: install host1
   hosts: host1
   become: true
@@ -20,7 +49,6 @@
         - postgresql-contrib
         - postgresql-common
         - sysstat 
-
     - name: get a git repository
       git:
         repo: "{{ hostvars[inventory_hostname]['GIT'] }}"
@@ -37,6 +65,12 @@
 
     - name: make logs dir
       command: mkdir -p "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/../bot"
+
+    - name: Change postgres password
+      become: yes
+      become_user: postgres
+      command: psql -c "ALTER USER {{ hostvars[inventory_hostname]['DB_USER'] }} WITH PASSWORD '{{ hostvars[inventory_hostname]['DB_PASSWORD'] }}';"
+
 
     - name: postgresql.conf master configuration
       become_user: postgres
@@ -142,10 +176,12 @@
         replace: "{{ hostvars[inventory_hostname]['DB_REPL_PASSWORD'] }}"
 
     - name: run init.sql as postgres
-      shell: "sudo -u postgres /usr/bin/psql -a -f /tmp/init.sql"
-      args:
-        warn: false
+      shell: "psql -a -f /tmp/init.sql"
+      become: yes
+      become_user: postgres
+      register: psql_output
       ignore_errors: true
+
 
     - name: Ensure log file is readable
       file:
@@ -157,6 +193,15 @@
   hosts: host2
   become: true
   tasks:
+
+    - name: install pkgs
+      apt:
+       pkg:
+        - git
+        - python3-pip
+        - postgresql-contrib
+        - postgresql-common
+        - sysstat
     - name: postgresql.conf replica conf
       become_user: postgres
       blockinfile:
@@ -169,15 +214,6 @@
       service:
         name: postgresql
         state: restarted
-
-    - name: install pkgs
-      apt:
-        pkg:
-        - git
-        - python3-pip
-        - postgresql-contrib
-        - postgresql-common
-        - sysstat 
 
     - name: install paramiko
       pip:
@@ -231,7 +267,7 @@
   become: yes
   tasks:
     - name: start bot
-      command: python3 "{{ hostvars[inventory_hostname]['WORKDIR'] }}/bot.py"
+      command: python3 "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/ansible/bot.py"
       environment:
         TOKEN: "{{ hostvars[inventory_hostname]['TOKEN'] }}"
         RM_HOST: "{{ hostvars[inventory_hostname]['RM_HOST'] }}"
