@@ -27,14 +27,9 @@
         dest: "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/ansible"
         version: main
 
-    - name: copy requirements.txt
-      copy:
-        src: /home/{{ hostvars[inventory_hostname]['RM_USER'] }}/DevOps-Final-Korovin-PTSTART/requirements.txt
-        dest: "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/requirements.txt"
-
     - name: installing pip packages
       pip:
-        requirements: "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/requirements.txt"
+        requirements: "/home/{{ hostvars[inventory_hostname]['RM_USER'] }}/ansible/bot/requirements.txt"
 
     - name: install paramiko
       pip:
