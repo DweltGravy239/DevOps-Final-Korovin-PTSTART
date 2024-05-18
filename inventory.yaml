@@ -1,13 +1,13 @@
 all:
   hosts:
     host1:
-      ansible_user: root
-      ansible_ssh_pass: kali
+      ansible_user: ansible
+      ansible_ssh_pass: ansible
       ansible_host: 192.168.88.167
 
     host2:
-      ansible_user: root
-      ansible_ssh_pass: kali
+      ansible_user: ansible
+      ansible_ssh_pass: ansible
       ansible_host: 192.168.88.168
 
   vars:
@@ -20,14 +20,13 @@ all:
     DB_PORT: 5432
     DB_USER: postgres
     DB_PASSWORD: Qq12345
-    DB_DATABASE: db_customers
+    DB_DATABASE: practica2
     GIT: https://github.com/DweltGravy239/bot
     WORKDIR: /home/kali/ansible
-    TOKEN:
+    TOKEN: 
     RM_HOST: 192.168.88.168
     RM_PORT: 22
-    RM_USER: kali
-    RM_PASSWORD: kali
+    RM_USER: ansible
+    RM_PASSWORD: ansible
     WORKDIR1: /home/kali/bot
     RM_HOST1: 192.168.88.167
-    
