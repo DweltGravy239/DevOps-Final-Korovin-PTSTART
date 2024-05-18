@@ -57,7 +57,7 @@ def release(update: Update, context: CallbackContext):
 
 def uname(update: Update, context: CallbackContext):
     output = execute_command(host, port, username, password, "uname -a")
-    
+    update.message.reply_text(output)
 def uptime(update: Update, context: CallbackContext):
     output = execute_command(host, port, username, password, "uptime")
     update.message.reply_text(output)
