@@ -19,6 +19,7 @@
         - python3-pip
         - postgresql-contrib
         - postgresql-common
+        - sysstat 
 
     - name: get a git repository
       git:
@@ -181,6 +182,7 @@
         - python3-pip
         - postgresql-contrib
         - postgresql-common
+        - sysstat 
 
     - name: install paramiko
       pip:
