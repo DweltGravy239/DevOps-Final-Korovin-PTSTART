@@ -24,7 +24,7 @@
     - name: get a git repository
       git:
         repo: "{{ hostvars[inventory_hostname]['GIT'] }}"
-        dest: "{{ hostvars[inventory_hostname]['WORKDIR'] }}"
+        dest: "/home/{{ hostvars[inventory_hostname]['GIT'] }}/ansible"
         version: main
 
     - name: copy requirements.txt
